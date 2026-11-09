@@ -1,0 +1,31 @@
+# macOS / IDE / local Android files
+.DS_Store
+.idea/
+.vscode/
+*.iml
+local.properties
+
+# Build artifacts and signing material
+build/
+out/
+dist/
+*.apk
+*.aab
+*.idsig
+*.jks
+*.keystore
+
+# Private diary data and local migration utilities
+imports/
+exports/
+backups/
+tools/
+*.json
+*.txt
+*.pdf
+*.sqlite
+*.db
+
+# Language caches
+__pycache__/
+*.pyc
