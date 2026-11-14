@@ -11,6 +11,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,6 +26,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.window.OnBackInvokedDispatcher;
 import android.content.Context;
 import android.widget.EditText;
 import android.widget.GridLayout;
@@ -67,6 +69,12 @@ public final class MainActivity extends Activity {
     private static final int MAX_BACKUP_BYTES = 5 * 1024 * 1024;
     private static final String[] MOODS = {"不錯", "平靜", "疲憊", "低落"};
     private static final Locale LOCALE = Locale.TAIWAN;
+    private static final DateTimeFormatter DISPLAY_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy 年 M 月 d 日", LOCALE);
+    private static final DateTimeFormatter DISPLAY_WEEKDAY_FORMAT =
+            DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH);
+    private static final DateTimeFormatter ACCESSIBLE_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy 年 M 月 d 日，EEEE", LOCALE);
 
     private JournalStore store;
     private JournalStore.Entry editing;
@@ -118,6 +126,7 @@ public final class MainActivity extends Activity {
                 == Configuration.UI_MODE_NIGHT_YES;
         applyPalette();
         configureWindow();
+        registerSystemBackHandler();
         store = new JournalStore(this);
         if (state != null) {
             calendarOpen = state.getBoolean("calendarOpen", false);
@@ -186,8 +195,18 @@ public final class MainActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
+        handleSystemBack();
+    }
+
+    private void registerSystemBackHandler() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::handleSystemBack);
+    }
+
+    private void handleSystemBack() {
         if (editing != null) {
-            if (editorMode) finishEditing(); else finishViewing();
+            if (editorMode) finishEditingToReturnDestination(); else finishViewing();
             return;
         }
         if (calendarOpen) {
@@ -202,7 +221,7 @@ public final class MainActivity extends Activity {
             renderHome();
             return;
         }
-        super.onBackPressed();
+        finish();
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -761,8 +780,11 @@ public final class MainActivity extends Activity {
         LinearLayout top = row();
         top.setGravity(Gravity.CENTER_VERTICAL);
         card.addView(top);
-        TextView date = text(formatDate(entry.date), 13, muted, true);
-        top.addView(date, new LinearLayout.LayoutParams(0, dp(32), 1));
+        TextView date = text(formatDisplayDate(entry.date), 13, muted, true);
+        date.setGravity(Gravity.CENTER_VERTICAL);
+        date.setMaxLines(2);
+        date.setMinHeight(dp(32));
+        top.addView(date, new LinearLayout.LayoutParams(0, -2, 1));
         TextView mood = text(entry.mood, 12, accent, true);
         mood.setGravity(Gravity.CENTER);
         mood.setBackground(chipBackground(false));
@@ -781,7 +803,8 @@ public final class MainActivity extends Activity {
         excerpt.setMaxLines(2);
         excerpt.setLineSpacing(0, 1.25f);
         card.addView(excerpt);
-        card.setContentDescription(formatDate(entry.date) + "，" + titleValue + "，心情" + entry.mood);
+        card.setContentDescription(formatAccessibleDate(entry.date)
+                + "，" + titleValue + "，心情" + entry.mood);
         return card;
     }
 
@@ -1301,8 +1324,11 @@ public final class MainActivity extends Activity {
         LinearLayout metadata = row();
         metadata.setGravity(Gravity.CENTER_VERTICAL);
         content.addView(metadata);
-        TextView date = text(formatLongDate(editing.date), 14, accent, true);
-        metadata.addView(date, new LinearLayout.LayoutParams(0, dp(40), 1));
+        TextView date = text(formatDisplayDate(editing.date), 14, accent, true);
+        date.setGravity(Gravity.CENTER_VERTICAL);
+        date.setMaxLines(2);
+        date.setMinHeight(dp(40));
+        metadata.addView(date, new LinearLayout.LayoutParams(0, -2, 1));
         TextView mood = text(editing.mood, 12, accent, true);
         mood.setGravity(Gravity.CENTER);
         mood.setBackground(chipBackground(false));
@@ -1356,7 +1382,7 @@ public final class MainActivity extends Activity {
         menu.setOnMenuItemClickListener(item -> {
             if (item.getItemId() != MENU_EXPORT_ENTRY_PDF || editing == null) return false;
             preparePdfExport(Collections.singletonList(editing),
-                    formatLongDate(editing.date),
+                    formatAccessibleDate(editing.date),
                     "liubai-journal-" + editing.date + ".pdf");
             return true;
         });
@@ -1416,11 +1442,13 @@ public final class MainActivity extends Activity {
 
         TextView dateLabel = fieldLabel("日期");
         content.addView(dateLabel);
-        TextView dateButton = actionButton(formatLongDate(editing.date), surface, ink, this::pickDate);
+        TextView dateButton = actionButton(formatDisplayDate(editing.date), surface, ink, this::pickDate);
         dateButton.setGravity(Gravity.CENTER_VERTICAL);
-        dateButton.setPadding(dp(16), 0, dp(16), 0);
-        dateButton.setContentDescription("目前日期" + formatLongDate(editing.date) + "，點一下修改");
-        content.addView(dateButton, new LinearLayout.LayoutParams(-1, dp(52)));
+        dateButton.setPadding(dp(16), dp(8), dp(16), dp(8));
+        dateButton.setMaxLines(2);
+        dateButton.setMinHeight(dp(52));
+        dateButton.setContentDescription("目前日期" + formatAccessibleDate(editing.date) + "，點一下修改");
+        content.addView(dateButton, new LinearLayout.LayoutParams(-1, -2));
 
         TextView moodLabel = fieldLabel("今天的心情");
         moodLabel.setPadding(0, dp(24), 0, dp(8));
@@ -1551,6 +1579,15 @@ public final class MainActivity extends Activity {
             return;
         }
         renderReader();
+    }
+
+    private void finishEditingToReturnDestination() {
+        hideKeyboard();
+        flushPendingSave();
+        if (editing != null && editing.title.trim().isEmpty() && editing.body.trim().isEmpty()) {
+            store.delete(editing.id);
+        }
+        renderEntryReturnDestination();
     }
 
     private void confirmDelete() {
@@ -1729,14 +1766,15 @@ public final class MainActivity extends Activity {
         return "晚安，收好今天的心情";
     }
 
-    private String formatDate(String isoDate) {
+    private String formatDisplayDate(String isoDate) {
         LocalDate date = LocalDate.parse(isoDate);
-        return date.format(DateTimeFormatter.ofPattern("yyyy 年 M 月 d 日，E", LOCALE));
+        return date.format(DISPLAY_DATE_FORMAT) + " · "
+                + date.format(DISPLAY_WEEKDAY_FORMAT) + ".";
     }
 
-    private String formatLongDate(String isoDate) {
+    private String formatAccessibleDate(String isoDate) {
         LocalDate date = LocalDate.parse(isoDate);
-        return date.format(DateTimeFormatter.ofPattern("yyyy 年 M 月 d 日  EEEE", LOCALE));
+        return date.format(ACCESSIBLE_DATE_FORMAT);
     }
 
     private String firstMeaningfulLine(String value) {

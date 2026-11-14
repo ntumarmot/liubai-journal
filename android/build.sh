@@ -7,7 +7,7 @@ JAVA_HOME=${JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents
 TOOLS="$SDK/build-tools/36.0.0"
 ANDROID_JAR="$SDK/platforms/android-37.0/android.jar"
 KEYSTORE=${ANDROID_DEBUG_KEYSTORE:-"$HOME/.android/debug.keystore"}
-OUT="$ROOT/dist/liubai-journal-1.8-debug.apk"
+OUT="$ROOT/dist/liubai-journal-1.9-debug.apk"
 
 for tool in "$JAVA_HOME/bin/javac" "$JAVA_HOME/bin/jar" "$JAVA_HOME/bin/keytool" \
   "$TOOLS/aapt" "$TOOLS/d8" "$TOOLS/zipalign" "$TOOLS/apksigner" "$ANDROID_JAR"; do

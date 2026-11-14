@@ -60,7 +60,7 @@
 | 平台 | 原生 Android |
 | 語言 | Java |
 | 最低版本 | Android 8.0（API 26） |
-| 目前版本 | v1.8 |
+| 目前版本 | v1.9 |
 | App package | `app.liubai.journal` |
 | 資料儲存 | App 裝置私有目錄 |
 | 建置方式 | Android SDK command-line tools，不依賴 Gradle |
@@ -76,7 +76,7 @@
 輸出：
 
 ```text
-dist/liubai-journal-1.8-debug.apk
+dist/liubai-journal-1.9-debug.apk
 ```
 
 ## 安裝
@@ -84,7 +84,7 @@ dist/liubai-journal-1.8-debug.apk
 連接 Android 裝置或啟動模擬器後執行：
 
 ```sh
-/opt/homebrew/share/android-commandlinetools/platform-tools/adb install -r dist/liubai-journal-1.8-debug.apk
+/opt/homebrew/share/android-commandlinetools/platform-tools/adb install -r dist/liubai-journal-1.9-debug.apk
 ```
 
 `-r` 代表覆蓋更新既有 App，正常情況下會保留原本的裝置私有資料。若 Android 顯示簽章不符，請先停止安裝並保留錯誤訊息，不要直接解除安裝。
@@ -94,6 +94,12 @@ dist/liubai-journal-1.8-debug.apk
 ## 更新紀錄
 
 > 每次發布新版本時，都要先在這裡補上該版本的實際改動，再提交程式碼。
+
+### v1.9
+
+- 主畫面、日記閱讀頁與編輯頁統一使用 `Mon.`、`Tue.` 等英文星期縮寫。
+- 日期欄位可隨系統字體大小增高並在需要時換行，避免星期文字被裁掉。
+- 編輯日記時使用 Android 系統返回鍵或返回手勢，會先儲存內容，再回到原本的日記列表或來源頁籤。
 
 ### v1.8
 
